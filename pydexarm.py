@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import serial
 import re
@@ -130,11 +131,63 @@ class Dexarm:
     def conveyor_belt_stop(self, speed=0):
         self._send_cmd("M2013\r")
 
+    """Rotate"""
+    def rotate_clockwise(self, angle):
+        self.set_module_kind(6)
+        self._send_cmd("M2100\r")
+        self._send_cmd("M2101 " + "R" + str(angle) + '\r')
+
+    def rotate_counterwise(self, angle):
+        self.set_module_kind(6)
+        self._send_cmd("M2100\r")
+        self._send_cmd("M2101 " + "R-" + str(angle) + "\r")
+
+    def bereken_y(self, x, diameter):
+        y = int(math.sqrt(diameter * diameter - x * x))
+        return y
+
+    def angle(self, x, y):
+        return (90 - 180*math.atan2(y, x)) - 360
+
     def circle(self, diameter, segments):
+        rangecompensatie = 250
+        z_start = 0
         positions = np.linspace(0, 2 * np.pi, segments + 1)
         straal = diameter / 2
         self.move_to(straal, 0, 0)
         x = straal * np.cos(positions)
         y = straal * np.sin(positions)
         for i in range(segments):
-            self.move_to(straal, x[i + 1], y[i+1])
+            self.move_to(x[i + 1] + rangecompensatie, y[i + 1] + rangecompensatie, z_start)
+
+
+        #
+        # x = 0
+        # oldcomp = 0
+        # compensate = 0
+        # while x <= diameter:
+        #     y = int(self.bereken_y(x, diameter))
+        #     # voeg waardes toe aan x en y arrays met offset om altijd positieve waardes te hebben
+        #     # dexarm.moveto(x,y)
+        #     oldcomp = compensate
+        #     compensate = self.angle(x, y)
+        #     self.dealy_ms(150)
+        #     self.rotate_counterwise(int(compensate - oldcomp))
+        #     self.dealy_ms(150)
+        #     print(x + diameter + rangecompensatie, y + diameter + rangecompensatie, compensate, oldcomp, compensate - oldcomp)
+        #     # de rotatie is 360 dit moet 180 zijn.
+        #     self.move_to(int(x + diameter + rangecompensatie), int(y + diameter + rangecompensatie), z_start)
+        #     x += 1  # de volgende positie op de x-as
+        #
+        # x = diameter
+        # while x >= (0-diameter):
+        #     y = 0-int(self.bereken_y(x, diameter))
+        #     # voeg waardes toe aan x en y arrays met offset om altijd positieve waardes te hebben
+        #     oldcomp = compensate
+        #     compensate = self.angle(x, y)
+        #     self.dealy_ms(150)
+        #     self.rotate_clockwise(int(compensate - oldcomp))
+        #     self.dealy_ms(150)
+        #     print(x+diameter, y+diameter+rangecompensatie)
+        #     self.move_to(x+diameter, y+diameter+rangecompensatie, z_start)
+        #     x -= 1
